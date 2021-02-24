@@ -44,15 +44,17 @@ import com.maddyhome.idea.vim.helper.MessageHelper
 import com.maddyhome.idea.vim.option.IdeaStatusIcon
 import com.maddyhome.idea.vim.option.OptionsManager
 import icons.VimIcons
+import org.apache.commons.io.IOUtils
 import org.jetbrains.annotations.NonNls
 import java.awt.Point
 import java.awt.event.MouseEvent
+import java.io.BufferedReader
 import javax.swing.Icon
 import javax.swing.SwingConstants
 
 @NonNls
-const val STATUS_BAR_ICON_ID = "IdeaVim-Icon"
-const val STATUS_BAR_DISPLAY_NAME = "IdeaVim"
+const val STATUS_BAR_ICON_ID = "Mayo-Icon"
+const val STATUS_BAR_DISPLAY_NAME = "Mayo"
 
 class StatusBarIconFactory : StatusBarWidgetFactory/*, LightEditCompatible*/ {
 
@@ -172,11 +174,54 @@ private object VimActionsPopup {
     actionGroup.add(ShortcutConflictsSettings)
     actionGroup.addSeparator()
 
+
+    // get namespaces
+//    val p = Runtime.getRuntime().exec("kubectl get namespaces --no-headers -o custom-columns=:metadata.name")
+//    p.waitFor()
+//    val stdOut = IOUtils.toString (p.inputStream, Charsets.UTF_8)
+//    val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
+    //val list: List<String> = listOf("skypallet-staging", "skypallet-prod", "redash-staging")
+    var list = arrayOf("skypallet-staging", "skypallet-prod", "redash-staging")
+
+
+
+
+
     val eapGroup = DefaultActionGroup(
-      MessageHelper.message("action.eap.choice.active.text", if (JoinEap.eapActive()) 0 else 1),
+      MessageHelper.message("action.portforward.choice.active.text", if (JoinEap.portForwardActive()) 0 else 1),
       true
     )
-    eapGroup.add(JoinEap)
+/*    eapGroup.add(JoinEap)
+    eapGroup.add(
+      HelpLink(
+        MessageHelper.message("action.about.eap.text"),
+        "https://github.com/JetBrains/ideavim#get-early-access",
+        null
+      )
+    )*/
+
+    //val itr = list.listIterator()      // or iterator()
+
+    for (item in list)       eapGroup.add(
+      StartPortForward(
+        item,
+        item,
+        null
+      )
+    )
+// WORKS
+/*    var i: Int = 0
+    while ( i < 2) {
+      eapGroup.add(
+        HelpLink(//StartPortForward(
+          MessageHelper.message("action.about.eap.text"),
+          "https://github.com/JetBrains/ideavim#get-early-access",
+          null
+        )
+      )
+      i = i +1
+    }*/
+
     eapGroup.add(
       HelpLink(
         MessageHelper.message("action.about.eap.text"),
@@ -226,6 +271,25 @@ private class HelpLink(
   }
 }
 
+private class StartPortForward(
+  // [VERSION UPDATE] 203+ uncomment
+  /*@ActionText*/
+  name: String,
+  val namespace: String,
+  icon: Icon?
+) : DumbAwareAction(name, null, icon)/*, LightEditCompatible*/ {
+  override fun actionPerformed(e: AnActionEvent) {
+    //BrowserUtil.browse(link)
+    //val mayo_command: String = "mayo port-forward-start -n " + namespace
+    val mayo_command: String = "mayo port-forward-start -n skypallet-staging --globally"
+
+    val p = Runtime.getRuntime().exec(mayo_command)
+    //p.waitFor()
+    var list = arrayOf("skypallet-staging", "skypallet-prod", "redash-staging")
+  }
+}
+
+
 private object ShortcutConflictsSettings : DumbAwareAction(MessageHelper.message("action.settings.text"))/*, LightEditCompatible*/ {
   override fun actionPerformed(e: AnActionEvent) {
     ShowSettingsUtil.getInstance().editConfigurable(e.project, VimEmulationConfigurable())
@@ -237,21 +301,45 @@ private object JoinEap : DumbAwareAction()/*, LightEditCompatible*/ {
 
   fun eapActive() = EAP_LINK in UpdateSettings.getInstance().storedPluginHosts
 
+  fun portForwardActive() : Boolean  {
+    //Runtime.getRuntime().exec("ps -aux |  grep 'vpn-tcp' | wc -l")
+    //var commandd: String = { "/bin/sh", "-c", "ps -ef | grep export" }
+    val my_command = arrayOf("/bin/sh", "-c", "ps -ef| grep -v grep | grep vpn-tcp | wc -l")
+
+    val p = Runtime.getRuntime().exec(my_command) // |  grep 'vpn-tcp' | wc -l")
+    p.waitFor()
+    //val reader = BufferedReader(InputStreamReader(process.inputStream))
+    val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8)
+    val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
+  //  var stdOut_int: Int = stdOut.toInt()
+    if ( "1" in stdOut )
+      return true
+    else
+      return false
+  }
+
   override fun actionPerformed(e: AnActionEvent) {
-    if (eapActive()) {
+/*    if (eapActive()) {
       UpdateSettings.getInstance().storedPluginHosts -= EAP_LINK
       VimPlugin.getNotifications(e.project).notifyEapFinished()
     } else {
       UpdateSettings.getInstance().storedPluginHosts += EAP_LINK
       VimPlugin.getNotifications(e.project).notifySubscribedToEap()
+    }*/
+    if (portForwardActive()) {
+      //UpdateSettings.getInstance().storedPluginHosts -= EAP_LINK
+      VimPlugin.getNotifications(e.project).notifyPortForwardStarted()
+    } else {
+      //UpdateSettings.getInstance().storedPluginHosts += EAP_LINK
+      VimPlugin.getNotifications(e.project).notifyPortForwardStopped()
     }
   }
 
   override fun update(e: AnActionEvent) {
-    if (eapActive()) {
-      e.presentation.text = MessageHelper.message("action.finish.eap.text")
+    if (portForwardActive()) {
+      e.presentation.text = MessageHelper.message("action.finish.portforward.text")
     } else {
-      e.presentation.text = MessageHelper.message("action.subscribe.to.eap.text")
+      e.presentation.text = MessageHelper.message("action.start.portforward.text")
     }
   }
 }

@@ -175,6 +175,23 @@ class NotificationService(private val project: Project?) {
     ).notify(project)
   }
 
+  fun notifyPortForwardStarted() {
+    Notification(
+      IDEAVIM_NOTIFICATION_ID, IDEAVIM_NOTIFICATION_TITLE,
+      """You have started a port-forward.""",
+      NotificationType.INFORMATION
+    ).notify(project)
+  }
+
+  fun notifyPortForwardStopped() {
+    Notification(
+      IDEAVIM_NOTIFICATION_ID, IDEAVIM_NOTIFICATION_TITLE,
+      """You have stopped a port-forward.""",
+      NotificationType.INFORMATION
+    ).notify(project)
+  }
+
+
   fun notifyActionId(id: String?) {
     ActionIdNotifier.notifyActionId(id, project)
   }
@@ -293,8 +310,8 @@ class NotificationService(private val project: Project?) {
     // [VERSION UPDATE] 203+
     @Suppress("DEPRECATION")
     val IDEAVIM_STICKY_GROUP = NotificationGroup("ideavim-sticky", NotificationDisplayType.STICKY_BALLOON, false)
-    const val IDEAVIM_NOTIFICATION_ID = "ideavim"
-    const val IDEAVIM_NOTIFICATION_TITLE = "IdeaVim"
+    const val IDEAVIM_NOTIFICATION_ID = "mayo"
+    const val IDEAVIM_NOTIFICATION_TITLE = "mayo"
     const val ideajoinExamplesUrl = "https://jb.gg/f9zji9"
 
     private fun createIdeaVimRcManually(message: String, project: Project?) {
