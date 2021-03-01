@@ -175,18 +175,26 @@ class NotificationService(private val project: Project?) {
     ).notify(project)
   }
 
-  fun notifyPortForwardStarted() {
+  fun notifyPortForwardStarted(namespace: String) {
     Notification(
       IDEAVIM_NOTIFICATION_ID, IDEAVIM_NOTIFICATION_TITLE,
-      """You have started a port-forward.""",
+      """You have started a port-forward to namespace: """ + namespace,
       NotificationType.INFORMATION
     ).notify(project)
   }
 
-  fun notifyPortForwardStopped() {
+  fun notifyReviewPortForwardStarted(namespace: String, release: String) {
     Notification(
       IDEAVIM_NOTIFICATION_ID, IDEAVIM_NOTIFICATION_TITLE,
-      """You have stopped a port-forward.""",
+      """You have started a port-forward to review: """ + release + """ of namespace: """ + namespace,
+      NotificationType.INFORMATION
+    ).notify(project)
+  }
+
+  fun notifyPortForwardStopped(namespace: String) {
+    Notification(
+      IDEAVIM_NOTIFICATION_ID, IDEAVIM_NOTIFICATION_TITLE,
+      """You have stopped a port-forward to """ + namespace,
       NotificationType.INFORMATION
     ).notify(project)
   }
@@ -245,13 +253,14 @@ class NotificationService(private val project: Project?) {
 
   @Suppress("DialogTitleCapitalization")
   class OpenIdeaVimRcAction(private val notification: Notification?) :
-    DumbAwareAction("Open ~/.ideavimrc")/*, LightEditCompatible*/ {
+    DumbAwareAction("Open your configuration file")/*, LightEditCompatible*/ {
     override fun actionPerformed(e: AnActionEvent) {
       val eventProject = e.project
       if (eventProject != null) {
         val ideaVimRc = VimScriptParser.findOrCreateIdeaVimRc()
         if (ideaVimRc != null) {
-          OpenFileAction.openFile(ideaVimRc.path, eventProject)
+        //  OpenFileAction.openFile(ideaVimRc.path, eventProject)
+          OpenFileAction.openFile("/tmp/cayzn-review-francois.yaml", eventProject)
           // Do not expire a notification. The user should see what they are entering
           return
         }

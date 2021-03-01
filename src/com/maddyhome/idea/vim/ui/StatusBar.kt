@@ -20,6 +20,8 @@ package com.maddyhome.idea.vim.ui
 
 import com.intellij.ide.BrowserUtil
 import com.intellij.ide.DataManager
+import com.intellij.ide.actions.OpenFileAction
+import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
@@ -34,16 +36,19 @@ import com.intellij.openapi.updateSettings.impl.UpdateSettings
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidgetFactory
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.WindowManager
 import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.Consumer
+import com.intellij.util.containers.toArray
 import com.maddyhome.idea.vim.VimPlugin
 import com.maddyhome.idea.vim.group.NotificationService
 import com.maddyhome.idea.vim.helper.MessageHelper
 import com.maddyhome.idea.vim.option.IdeaStatusIcon
 import com.maddyhome.idea.vim.option.OptionsManager
 import icons.VimIcons
+import kotlinx.coroutines.delay
 import org.apache.commons.io.IOUtils
 import org.jetbrains.annotations.NonNls
 import java.awt.Point
@@ -51,6 +56,9 @@ import java.awt.event.MouseEvent
 import java.io.BufferedReader
 import javax.swing.Icon
 import javax.swing.SwingConstants
+import com.intellij.openapi.wm.ToolWindowAnchor
+import com.maddyhome.idea.vim.ex.vimscript.VimScriptParser
+
 
 @NonNls
 const val STATUS_BAR_ICON_ID = "Mayo-Icon"
@@ -168,27 +176,81 @@ private object VimActionsPopup {
     val actionGroup = DefaultActionGroup()
     actionGroup.isPopup = true
 
-    actionGroup.add(ActionManager.getInstance().getAction("VimPluginToggle"))
-    actionGroup.addSeparator()
-    actionGroup.add(NotificationService.OpenIdeaVimRcAction(null))
-    actionGroup.add(ShortcutConflictsSettings)
-    actionGroup.addSeparator()
+    //actionGroup.add(ActionManager.getInstance().getAction("VimPluginToggle"))
+    //actionGroup.addSeparator()
+   // actionGroup.add(NotificationService.OpenIdeaVimRcAction(null))
+    //actionGroup.add(ShortcutConflictsSettings)
+    //actionGroup.addSeparator()
+    var namespace_list = arrayOf<String>()
+    //var single_namespace_review_list = arrayOf<String>()
+    var single_namespace_review_list: MutableList<String> = mutableListOf()
+    var cluster_review_list: MutableList<String> = mutableListOf()
+    var review_namespace: MutableList<String> = mutableListOf()
 
+    var active_namespace = ""
 
     // get namespaces
-//    val p = Runtime.getRuntime().exec("kubectl get namespaces --no-headers -o custom-columns=:metadata.name")
-//    p.waitFor()
-//    val stdOut = IOUtils.toString (p.inputStream, Charsets.UTF_8)
-//    val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
-    //val list: List<String> = listOf("skypallet-staging", "skypallet-prod", "redash-staging")
-    var list = arrayOf("skypallet-staging", "skypallet-prod", "redash-staging")
+    if (!JoinEap.portForwardActive()) {
+      val p = Runtime.getRuntime().exec("kubectl get namespaces --no-headers -o custom-columns=:metadata.name")
+      p.waitFor()
+      val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8)
+      val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
+      namespace_list = stdOut.split("\n").toTypedArray()
+      //println(namespace_list)
+      namespace_list.forEach { System.out.println(it) }
+      for (item in namespace_list) {
+        if ("review" in item) {
+          //println("printing reviews of $item")
+          //helm list --namespace cayzn-review
+          var helm_command = arrayOf("/bin/sh", "-c", "helm list --namespace " + item + "| grep -v NAME | grep -v gitlab | sed 's/|/ /' | awk '{print $1,$2}'")
+          val p = Runtime.getRuntime().exec(helm_command)
+          p.waitFor()
+          val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8)
+          println("for namespace $item, result is $stdOut and length is ${stdOut.length}")
+          if (!stdOut.isEmpty())
+            single_namespace_review_list = stdOut.split("\n").toMutableList()
+            single_namespace_review_list.forEach { println("entry of review list $it") }
+            cluster_review_list.addAll(single_namespace_review_list)
+            single_namespace_review_list.clear()
+        }
+        //println(review_list)
+
+        //println("printing review of $item")
+        //single_namespace_review_list.forEach { System.out.println(it) }
+
+       }
+      cluster_review_list.forEach { println("entry of cluster review list $it") }
+
+      //var review_group: ActionGroup[]
+
+    }
+    else {
+      // Get active namespace
+      val my_command = arrayOf("/bin/sh", "-c", "ps -aux | grep tele | grep port-forward | grep namespace | grep -oP '(?<=namespace )[^ ]*'")
+      val p = Runtime.getRuntime().exec(my_command)
+      p.waitFor()
+      // return from inputStream is full of unwanted chars, remove them
+      active_namespace = IOUtils.toString(p.inputStream, Charsets.UTF_8).substringBefore('\n')
+    }
+
+    var portForwardMessage: String
+    var portForwarReviewMessage: String
+    if (JoinEap.portForwardActive())
+      portForwardMessage = "Port-Forward (Active in " + active_namespace + ")"
+    else
+      portForwardMessage = "Port-Forward (Namespace)"
+      portForwarReviewMessage = "Port-Forward (Review)"
 
 
 
 
-
+    // Main group
     val eapGroup = DefaultActionGroup(
-      MessageHelper.message("action.portforward.choice.active.text", if (JoinEap.portForwardActive()) 0 else 1),
+      portForwardMessage,
+      true
+    )
+    val reviewGroup = DefaultActionGroup(
+      portForwarReviewMessage,
       true
     )
 /*    eapGroup.add(JoinEap)
@@ -201,14 +263,50 @@ private object VimActionsPopup {
     )*/
 
     //val itr = list.listIterator()      // or iterator()
-
-    for (item in list)       eapGroup.add(
-      StartPortForward(
-        item,
-        item,
-        null
+    if (JoinEap.portForwardActive())
+      eapGroup.add(
+        StopPortForward(
+          "Stop port-forward",
+          active_namespace,
+          null
+        )
       )
-    )
+      eapGroup.add(
+        OpenConfigurationFile(
+          "Open your configuration file",
+          active_namespace,
+          null
+        )
+      )
+
+    if (!JoinEap.portForwardActive())
+      for (item in namespace_list) {
+          if (!item.contains("review"))
+            eapGroup.add(
+              StartPortForward(
+                item,
+                item,
+                null
+              )
+            )
+      }
+      // for items in review!!!
+      for (item in cluster_review_list)
+        if (item.length > 0) {
+          //var namespace: String = item.
+          review_namespace = item.split(" ").toMutableList()
+          println("in  cluster_review_list loop")
+          review_namespace.forEach { println(it) }
+          reviewGroup.add(
+            StartReviewPortForward(
+              review_namespace.elementAt(1) + "/" + review_namespace.elementAt(0),
+              review_namespace.elementAt(1),
+              review_namespace.elementAt(0),
+              null
+            )
+          )
+          review_namespace.clear()
+        }
 // WORKS
 /*    var i: Int = 0
     while ( i < 2) {
@@ -222,37 +320,32 @@ private object VimActionsPopup {
       i = i +1
     }*/
 
-    eapGroup.add(
-      HelpLink(
-        MessageHelper.message("action.about.eap.text"),
-        "https://github.com/JetBrains/ideavim#get-early-access",
-        null
-      )
-    )
+    //eapGroup.add(reviewGroup)
     actionGroup.add(eapGroup)
+    actionGroup.add(reviewGroup)
 
     val helpGroup = DefaultActionGroup(MessageHelper.message("action.contacts.help.text"), true)
-    helpGroup.add(
+/*    helpGroup.add(
       HelpLink(
         MessageHelper.message("action.contact.on.twitter.text"),
         "https://twitter.com/ideavim",
         VimIcons.TWITTER
       )
-    )
+    )*/
     helpGroup.add(
       HelpLink(
         MessageHelper.message("action.create.issue.text"),
-        "https://youtrack.jetbrains.com/issues/VIM",
+        "https://gitlab.wiremind.io/groups/wiremind/devops/-/issues",
         VimIcons.YOUTRACK
       )
     )
-    helpGroup.add(
+/*    helpGroup.add(
       HelpLink(
         MessageHelper.message("action.contribute.on.github.text"),
         "https://github.com/JetBrains/ideavim",
         VimIcons.GITHUB
       )
-    )
+    )*/
     actionGroup.add(helpGroup)
 
     return actionGroup
@@ -280,14 +373,77 @@ private class StartPortForward(
 ) : DumbAwareAction(name, null, icon)/*, LightEditCompatible*/ {
   override fun actionPerformed(e: AnActionEvent) {
     //BrowserUtil.browse(link)
-    //val mayo_command: String = "mayo port-forward-start -n " + namespace
-    val mayo_command: String = "mayo port-forward-start -n skypallet-staging --globally"
-
+    val mayo_command: String = "sudo /usr/local/bin/mayo port-forward-start -d -g -n " + namespace
     val p = Runtime.getRuntime().exec(mayo_command)
-    //p.waitFor()
-    var list = arrayOf("skypallet-staging", "skypallet-prod", "redash-staging")
+     VimPlugin.getNotifications(e.project).notifyPortForwardStarted(namespace)
   }
 }
+
+private class StartReviewPortForward(
+  // [VERSION UPDATE] 203+ uncomment
+  /*@ActionText*/
+  name: String,
+  val namespace: String,
+  val release: String,
+  icon: Icon?
+) : DumbAwareAction(name, null, icon)/*, LightEditCompatible*/ {
+  override fun actionPerformed(e: AnActionEvent) {
+    //BrowserUtil.browse(link)
+    val mayo_command: String = "sudo /usr/local/bin/mayo port-forward-start -g -n " + namespace + " --release-name " + release
+    //println("mayo_command : $mayo_command")
+    val p = Runtime.getRuntime().exec(mayo_command)
+    VimPlugin.getNotifications(e.project).notifyReviewPortForwardStarted(namespace, release)
+  }
+}
+
+
+private class StopPortForward(
+  // [VERSION UPDATE] 203+ uncomment
+  /*@ActionText*/
+  name: String,
+  val namespace: String,
+  icon: Icon?
+) : DumbAwareAction(name, null, icon)/*, LightEditCompatible*/ {
+  override fun actionPerformed(e: AnActionEvent) {
+    val mayo_command: String = "sudo /usr/local/bin/mayo clean-up -y"
+    val p = Runtime.getRuntime().exec(mayo_command)
+    //p.waitFor()
+    VimPlugin.getNotifications(e.project).notifyPortForwardStopped(namespace)
+  }
+}
+
+
+private class OpenConfigurationFile(
+  // [VERSION UPDATE] 203+ uncomment
+  /*@ActionText*/
+  name: String,
+  val namespace: String,
+  icon: Icon?
+) : DumbAwareAction("Open your configuration file")/*, LightEditCompatible*/ {
+  override fun actionPerformed(e: AnActionEvent) {
+    val eventProject = e.project
+    if (eventProject != null) {
+      val ideaVimRc = VimScriptParser.findOrCreateIdeaVimRc()
+      if (ideaVimRc != null) {
+        //  OpenFileAction.openFile(ideaVimRc.path, eventProject)
+        OpenFileAction.openFile("/tmp/cayzn-review-francois.yaml", eventProject)
+        // Do not expire a notification. The user should see what they are entering
+        return
+      }
+    }
+    //notification?.expire()
+    // NotificationService.createIdeaVimRcManually(
+     // "Cannot create configuration file.<br/>Please create <code>~/.ideavimrc</code> manually",
+     // eventProject
+    //)
+  }
+  }
+
+
+
+
+
+
 
 
 private object ShortcutConflictsSettings : DumbAwareAction(MessageHelper.message("action.settings.text"))/*, LightEditCompatible*/ {
@@ -312,10 +468,7 @@ private object JoinEap : DumbAwareAction()/*, LightEditCompatible*/ {
     val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8)
     val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
   //  var stdOut_int: Int = stdOut.toInt()
-    if ( "1" in stdOut )
-      return true
-    else
-      return false
+    return "1" in stdOut
   }
 
   override fun actionPerformed(e: AnActionEvent) {
@@ -328,10 +481,10 @@ private object JoinEap : DumbAwareAction()/*, LightEditCompatible*/ {
     }*/
     if (portForwardActive()) {
       //UpdateSettings.getInstance().storedPluginHosts -= EAP_LINK
-      VimPlugin.getNotifications(e.project).notifyPortForwardStarted()
+      //VimPlugin.getNotifications(e.project).notifyPortForwardStarted()
     } else {
       //UpdateSettings.getInstance().storedPluginHosts += EAP_LINK
-      VimPlugin.getNotifications(e.project).notifyPortForwardStopped()
+      //VimPlugin.getNotifications(e.project).notifyPortForwardStopped()
     }
   }
 
