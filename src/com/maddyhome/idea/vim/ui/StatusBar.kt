@@ -176,13 +176,13 @@ private object VimActionsPopup {
     val actionGroup = DefaultActionGroup()
     actionGroup.isPopup = true
 
+    // Old Action Bars
     //actionGroup.add(ActionManager.getInstance().getAction("VimPluginToggle"))
     //actionGroup.addSeparator()
    // actionGroup.add(NotificationService.OpenIdeaVimRcAction(null))
     //actionGroup.add(ShortcutConflictsSettings)
     //actionGroup.addSeparator()
     var namespace_list = arrayOf<String>()
-    //var single_namespace_review_list = arrayOf<String>()
     var single_namespace_review_list: MutableList<String> = mutableListOf()
     var cluster_review_list: MutableList<String> = mutableListOf()
     var review_namespace: MutableList<String> = mutableListOf()
@@ -190,59 +190,50 @@ private object VimActionsPopup {
     var active_namespace = ""
 
     // get namespaces
-    if (!JoinEap.portForwardActive()) {
+    if (!portForwardActive()) {
+      //println("####### PF INACTIVE!!!")
       val p = Runtime.getRuntime().exec("kubectl get namespaces --no-headers -o custom-columns=:metadata.name")
       p.waitFor()
       val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8)
-      val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
+      //val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
       namespace_list = stdOut.split("\n").toTypedArray()
-      //println(namespace_list)
-      namespace_list.forEach { System.out.println(it) }
+      //namespace_list.forEach { System.out.println(it) }
       for (item in namespace_list) {
         if ("review" in item) {
-          //println("printing reviews of $item")
-          //helm list --namespace cayzn-review
           var helm_command = arrayOf("/bin/sh", "-c", "helm list --namespace " + item + "| grep -v NAME | grep -v gitlab | sed 's/|/ /' | awk '{print $1,$2}'")
           val p = Runtime.getRuntime().exec(helm_command)
           p.waitFor()
           val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8)
-          println("for namespace $item, result is $stdOut and length is ${stdOut.length}")
           if (!stdOut.isEmpty())
             single_namespace_review_list = stdOut.split("\n").toMutableList()
-            single_namespace_review_list.forEach { println("entry of review list $it") }
             cluster_review_list.addAll(single_namespace_review_list)
             single_namespace_review_list.clear()
         }
         //println(review_list)
-
         //println("printing review of $item")
         //single_namespace_review_list.forEach { System.out.println(it) }
-
        }
-      cluster_review_list.forEach { println("entry of cluster review list $it") }
-
-      //var review_group: ActionGroup[]
+      //cluster_review_list.forEach { println("entry of cluster review list $it") }
 
     }
     else {
+      // println("####### PF ACTIVE!!!")
       // Get active namespace
       val my_command = arrayOf("/bin/sh", "-c", "ps -aux | grep tele | grep port-forward | grep namespace | grep -oP '(?<=namespace )[^ ]*'")
       val p = Runtime.getRuntime().exec(my_command)
       p.waitFor()
       // return from inputStream is full of unwanted chars, remove them
       active_namespace = IOUtils.toString(p.inputStream, Charsets.UTF_8).substringBefore('\n')
+      //println("Active namespace : $active_namespace")
     }
 
     var portForwardMessage: String
     var portForwarReviewMessage: String
-    if (JoinEap.portForwardActive())
+    if (portForwardActive())
       portForwardMessage = "Port-Forward (Active in " + active_namespace + ")"
     else
       portForwardMessage = "Port-Forward (Namespace)"
       portForwarReviewMessage = "Port-Forward (Review)"
-
-
-
 
     // Main group
     val eapGroup = DefaultActionGroup(
@@ -253,17 +244,8 @@ private object VimActionsPopup {
       portForwarReviewMessage,
       true
     )
-/*    eapGroup.add(JoinEap)
-    eapGroup.add(
-      HelpLink(
-        MessageHelper.message("action.about.eap.text"),
-        "https://github.com/JetBrains/ideavim#get-early-access",
-        null
-      )
-    )*/
 
-    //val itr = list.listIterator()      // or iterator()
-    if (JoinEap.portForwardActive())
+    if (portForwardActive()) {
       eapGroup.add(
         StopPortForward(
           "Stop port-forward",
@@ -278,8 +260,8 @@ private object VimActionsPopup {
           null
         )
       )
-
-    if (!JoinEap.portForwardActive())
+    }
+    if (!portForwardActive())
       for (item in namespace_list) {
           if (!item.contains("review"))
             eapGroup.add(
@@ -293,10 +275,7 @@ private object VimActionsPopup {
       // for items in review!!!
       for (item in cluster_review_list)
         if (item.length > 0) {
-          //var namespace: String = item.
           review_namespace = item.split(" ").toMutableList()
-          println("in  cluster_review_list loop")
-          review_namespace.forEach { println(it) }
           reviewGroup.add(
             StartReviewPortForward(
               review_namespace.elementAt(1) + "/" + review_namespace.elementAt(0),
@@ -307,31 +286,12 @@ private object VimActionsPopup {
           )
           review_namespace.clear()
         }
-// WORKS
-/*    var i: Int = 0
-    while ( i < 2) {
-      eapGroup.add(
-        HelpLink(//StartPortForward(
-          MessageHelper.message("action.about.eap.text"),
-          "https://github.com/JetBrains/ideavim#get-early-access",
-          null
-        )
-      )
-      i = i +1
-    }*/
 
-    //eapGroup.add(reviewGroup)
     actionGroup.add(eapGroup)
     actionGroup.add(reviewGroup)
 
     val helpGroup = DefaultActionGroup(MessageHelper.message("action.contacts.help.text"), true)
-/*    helpGroup.add(
-      HelpLink(
-        MessageHelper.message("action.contact.on.twitter.text"),
-        "https://twitter.com/ideavim",
-        VimIcons.TWITTER
-      )
-    )*/
+
     helpGroup.add(
       HelpLink(
         MessageHelper.message("action.create.issue.text"),
@@ -339,13 +299,7 @@ private object VimActionsPopup {
         VimIcons.YOUTRACK
       )
     )
-/*    helpGroup.add(
-      HelpLink(
-        MessageHelper.message("action.contribute.on.github.text"),
-        "https://github.com/JetBrains/ideavim",
-        VimIcons.GITHUB
-      )
-    )*/
+
     actionGroup.add(helpGroup)
 
     return actionGroup
@@ -372,8 +326,7 @@ private class StartPortForward(
   icon: Icon?
 ) : DumbAwareAction(name, null, icon)/*, LightEditCompatible*/ {
   override fun actionPerformed(e: AnActionEvent) {
-    //BrowserUtil.browse(link)
-    val mayo_command: String = "sudo /usr/local/bin/mayo port-forward-start -d -g -n " + namespace
+    val mayo_command: String = "/usr/local/bin/mayo port-forward-start -d -g -n " + namespace
     val p = Runtime.getRuntime().exec(mayo_command)
      VimPlugin.getNotifications(e.project).notifyPortForwardStarted(namespace)
   }
@@ -388,9 +341,7 @@ private class StartReviewPortForward(
   icon: Icon?
 ) : DumbAwareAction(name, null, icon)/*, LightEditCompatible*/ {
   override fun actionPerformed(e: AnActionEvent) {
-    //BrowserUtil.browse(link)
-    val mayo_command: String = "sudo /usr/local/bin/mayo port-forward-start -g -n " + namespace + " --release-name " + release
-    //println("mayo_command : $mayo_command")
+    val mayo_command: String = "/usr/local/bin/mayo port-forward-start -g -n " + namespace + " --release-name " + release
     val p = Runtime.getRuntime().exec(mayo_command)
     VimPlugin.getNotifications(e.project).notifyReviewPortForwardStarted(namespace, release)
   }
@@ -405,7 +356,7 @@ private class StopPortForward(
   icon: Icon?
 ) : DumbAwareAction(name, null, icon)/*, LightEditCompatible*/ {
   override fun actionPerformed(e: AnActionEvent) {
-    val mayo_command: String = "sudo /usr/local/bin/mayo clean-up -y"
+    val mayo_command: String = "/usr/local/bin/mayo clean-up -y"
     val p = Runtime.getRuntime().exec(mayo_command)
     //p.waitFor()
     VimPlugin.getNotifications(e.project).notifyPortForwardStopped(namespace)
@@ -421,78 +372,36 @@ private class OpenConfigurationFile(
   icon: Icon?
 ) : DumbAwareAction("Open your configuration file")/*, LightEditCompatible*/ {
   override fun actionPerformed(e: AnActionEvent) {
+    //println("# fetch config from $namespace")
     val eventProject = e.project
     if (eventProject != null) {
-      val ideaVimRc = VimScriptParser.findOrCreateIdeaVimRc()
-      if (ideaVimRc != null) {
-        //  OpenFileAction.openFile(ideaVimRc.path, eventProject)
-        OpenFileAction.openFile("/tmp/cayzn-review-francois.yaml", eventProject)
-        // Do not expire a notification. The user should see what they are entering
-        return
-      }
-    }
-    //notification?.expire()
-    // NotificationService.createIdeaVimRcManually(
-     // "Cannot create configuration file.<br/>Please create <code>~/.ideavimrc</code> manually",
-     // eventProject
-    //)
-  }
-  }
-
-
-
-
-
-
-
-
-private object ShortcutConflictsSettings : DumbAwareAction(MessageHelper.message("action.settings.text"))/*, LightEditCompatible*/ {
-  override fun actionPerformed(e: AnActionEvent) {
-    ShowSettingsUtil.getInstance().editConfigurable(e.project, VimEmulationConfigurable())
-  }
-}
-
-private object JoinEap : DumbAwareAction()/*, LightEditCompatible*/ {
-  private const val EAP_LINK = "https://plugins.jetbrains.com/plugins/eap/ideavim"
-
-  fun eapActive() = EAP_LINK in UpdateSettings.getInstance().storedPluginHosts
-
-  fun portForwardActive() : Boolean  {
-    //Runtime.getRuntime().exec("ps -aux |  grep 'vpn-tcp' | wc -l")
-    //var commandd: String = { "/bin/sh", "-c", "ps -ef | grep export" }
-    val my_command = arrayOf("/bin/sh", "-c", "ps -ef| grep -v grep | grep vpn-tcp | wc -l")
-
-    val p = Runtime.getRuntime().exec(my_command) // |  grep 'vpn-tcp' | wc -l")
-    p.waitFor()
-    //val reader = BufferedReader(InputStreamReader(process.inputStream))
-    val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8)
-    val stdErr = IOUtils.toString(p.errorStream, Charsets.UTF_8)
-  //  var stdOut_int: Int = stdOut.toInt()
-    return "1" in stdOut
-  }
-
-  override fun actionPerformed(e: AnActionEvent) {
-/*    if (eapActive()) {
-      UpdateSettings.getInstance().storedPluginHosts -= EAP_LINK
-      VimPlugin.getNotifications(e.project).notifyEapFinished()
-    } else {
-      UpdateSettings.getInstance().storedPluginHosts += EAP_LINK
-      VimPlugin.getNotifications(e.project).notifySubscribedToEap()
-    }*/
-    if (portForwardActive()) {
-      //UpdateSettings.getInstance().storedPluginHosts -= EAP_LINK
-      //VimPlugin.getNotifications(e.project).notifyPortForwardStarted()
-    } else {
-      //UpdateSettings.getInstance().storedPluginHosts += EAP_LINK
-      //VimPlugin.getNotifications(e.project).notifyPortForwardStopped()
-    }
-  }
-
-  override fun update(e: AnActionEvent) {
-    if (portForwardActive()) {
-      e.presentation.text = MessageHelper.message("action.finish.portforward.text")
-    } else {
-      e.presentation.text = MessageHelper.message("action.start.portforward.text")
+      val my_command = arrayOf("/bin/sh", "-c", "find /tmp -name *" + namespace + "* 2>/dev/null")
+      val p = Runtime.getRuntime().exec(my_command)
+      p.waitFor()
+      var config_filename = IOUtils.toString(p.inputStream, Charsets.UTF_8).substringBefore('\n')
+      OpenFileAction.openFile(config_filename, eventProject)
+     // println("config_filename = $config_filename")
+      return
     }
   }
 }
+
+fun portForwardActive() : Boolean  {
+  val mayo_command = arrayOf("/bin/sh", "-c", "ps -ef| grep -v grep | grep vpn-tcp | wc -l")
+  val p = Runtime.getRuntime().exec(mayo_command) // |  grep 'vpn-tcp' | wc -l")
+  p.waitFor()
+  val stdOut = IOUtils.toString(p.inputStream, Charsets.UTF_8).substringBefore('\n')
+  //val telepresence_running = stdOut.toInt()
+//  println(" in portForwardActive $stdOut")
+  var telepresenceRunning = 0
+  telepresenceRunning = stdOut.toInt()
+  return telepresenceRunning >= 1
+}
+
+
+  private object ShortcutConflictsSettings :
+    DumbAwareAction(MessageHelper.message("action.settings.text"))/*, LightEditCompatible*/ {
+    override fun actionPerformed(e: AnActionEvent) {
+      ShowSettingsUtil.getInstance().editConfigurable(e.project, VimEmulationConfigurable())
+    }
+  }

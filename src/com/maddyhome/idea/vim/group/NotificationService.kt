@@ -260,7 +260,7 @@ class NotificationService(private val project: Project?) {
         val ideaVimRc = VimScriptParser.findOrCreateIdeaVimRc()
         if (ideaVimRc != null) {
         //  OpenFileAction.openFile(ideaVimRc.path, eventProject)
-          OpenFileAction.openFile("/tmp/cayzn-review-francois.yaml", eventProject)
+          OpenFileAction.openFile("/tmp/skypallet-staging-jpcp8ygl.yaml", eventProject)
           // Do not expire a notification. The user should see what they are entering
           return
         }
