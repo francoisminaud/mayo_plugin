@@ -351,26 +351,27 @@ public class VimPlugin implements PersistentStateComponent<Element>, Disposable 
   }
 
   private void turnOnPlugin() {
+
     ApplicationManager.getApplication().invokeLater(this::updateState);
 
     // Register vim actions in command mode
-    RegisterActions.registerActions();
+    // RegisterActions.registerActions();
 
     // Register ex handlers
-    CommandParser.INSTANCE.registerHandlers();
+    // CommandParser.INSTANCE.registerHandlers();
 
     // Register extensions
-    VimExtensionRegistrar.registerExtensions();
+    // VimExtensionRegistrar.registerExtensions();
 
     // Execute ~/.ideavimrc
-    registerIdeavimrc();
+    // registerIdeavimrc();
 
     // Initialize extensions
-    VimExtensionRegistrar.enableDelayedExtensions();
+    // VimExtensionRegistrar.enableDelayedExtensions();
 
     // Turing on should be performed after all commands registration
-    getSearch().turnOn();
-    VimListenerManager.INSTANCE.turnOn();
+    // getSearch().turnOn();
+    // VimListenerManager.INSTANCE.turnOn();
   }
 
   private void turnOffPlugin() {

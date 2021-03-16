@@ -78,21 +78,24 @@
     </component>
   </application-components>
 
+<!--
   <extensionPoints>
     <extensionPoint name="vimExtension" beanClass="com.maddyhome.idea.vim.extension.ExtensionBeanClass" dynamic="true">
       <with attribute="implementation" implements="com.maddyhome.idea.vim.extension.VimExtension"/>
 
     </extensionPoint>
 
-    <!--    For internal use only -->
+
     <extensionPoint name="vimExCommand" beanClass="com.maddyhome.idea.vim.ex.ExBeanClass" dynamic="true">
       <with attribute="implementation" implements="com.maddyhome.idea.vim.ex.CommandHandler"/>
     </extensionPoint>
-    <!--    For internal use only -->
+
     <extensionPoint name="vimAction" beanClass="com.maddyhome.idea.vim.handler.ActionBeanClass" dynamic="true">
       <with attribute="implementation" implements="com.maddyhome.idea.vim.handler.EditorActionHandlerBase"/>
     </extensionPoint>
   </extensionPoints>
+-->
+
 
   <extensions defaultExtensionNs="com.intellij">
     <applicationConfigurable groupId="editor" instance="com.maddyhome.idea.vim.ui.VimEmulationConfigurable"/>
@@ -105,45 +108,54 @@
     <!-- Initialise as early as possible so that we're ready to edit quickly. This is especially important for Rider,
          which (at least for 2020.1) has some long running activities that block other startup extensions. None of the
          core platform activities have IDs, so we can't use "before ID". We have to use "first" -->
-    <postStartupActivity implementation="com.maddyhome.idea.vim.PluginStartup" order="first"/>
+    <!--
+<postStartupActivity implementation="com.maddyhome.idea.vim.PluginStartup" order="first"/>
 
     <editorFloatingToolbarProvider implementation="com.maddyhome.idea.vim.ui.ReloadFloatingToolbar"/>
 
     <actionPromoter implementation="com.maddyhome.idea.vim.key.VimActionsPromoter" order="last"/>
+-->
   </extensions>
 
   <xi:include href="/META-INF/includes/ApplicationServices.xml" xpointer="xpointer(/idea-plugin/*)"/>
+<!--
   <xi:include href="/META-INF/includes/VimActions.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/includes/VimExCommands.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/includes/VimExtensions.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/includes/VimListeners.xml" xpointer="xpointer(/idea-plugin/*)"/>
+-->
+
+
 
   <actions resource-bundle="messages.IdeaVimBundle">
     <action id="VimPluginToggle" class="com.maddyhome.idea.vim.action.VimPluginToggleAction">
       <add-to-group group-id="ToolsMenu" anchor="last"/>
     </action>
 
-    <!-- Internal -->
-    <action id="VimInternalAddBlockInlays" class="com.maddyhome.idea.vim.action.internal.AddBlockInlaysAction" text="Add Test Block Inlays | IdeaVim Internal" internal="true"/>
-    <action id="VimInternalAddInlineInlays" class="com.maddyhome.idea.vim.action.internal.AddInlineInlaysAction" text="Add Test Inline Inlays | IdeaVim Internal" internal="true"/>
 
-    <action id="VimShortcutKeyAction" class="com.maddyhome.idea.vim.action.VimShortcutKeyAction"/>
-    <action id="VimActions" class="com.maddyhome.idea.vim.ui.VimActions"/>
 
-    <!--    [Version Update] 202+ use-shortcut-of="ExternalSystem.ProjectRefreshAction" -->
-    <group id="IdeaVim.ReloadVimRc.group" class="com.maddyhome.idea.vim.ui.ReloadFloatingToolbarActionGroup">
-      <action id="IdeaVim.ReloadVimRc.reload" class="com.maddyhome.idea.vim.ui.ReloadVimRc">
-        <keyboard-shortcut first-keystroke="control shift O" keymap="$default"/>
-        <keyboard-shortcut first-keystroke="control shift O" keymap="Eclipse" remove="true"/>
-        <keyboard-shortcut first-keystroke="control shift O" keymap="NetBeans 6.5" remove="true"/>
-        <keyboard-shortcut first-keystroke="control shift O" keymap="Visual Studio" remove="true"/>
-        <keyboard-shortcut first-keystroke="meta shift O" keymap="Mac OS X" replace-all="true"/>
-        <keyboard-shortcut first-keystroke="meta shift O" keymap="Eclipse (Mac OS X)" replace-all="true" remove="true"/>
-        <keyboard-shortcut first-keystroke="meta shift O" keymap="Xcode" replace-all="true" remove="true"/>
-        <keyboard-shortcut first-keystroke="meta shift I" keymap="Mac OS X 10.5+" replace-all="true"/>
-      </action>
-    </group>
+      <action id="VimInternalAddBlockInlays" class="com.maddyhome.idea.vim.action.internal.AddBlockInlaysAction" text="Add Test Block Inlays | IdeaVim Internal" internal="true"/>
+      <action id="VimInternalAddInlineInlays" class="com.maddyhome.idea.vim.action.internal.AddInlineInlaysAction" text="Add Test Inline Inlays | IdeaVim Internal" internal="true"/>
 
-    <action id="VimFindActionIdAction" class="com.maddyhome.idea.vim.listener.FindActionIdAction"/>
-  </actions>
+      <action id="VimShortcutKeyAction" class="com.maddyhome.idea.vim.action.VimShortcutKeyAction"/>
+      <action id="VimActions" class="com.maddyhome.idea.vim.ui.VimActions"/>
+
+      <group id="IdeaVim.ReloadVimRc.group" class="com.maddyhome.idea.vim.ui.ReloadFloatingToolbarActionGroup">
+        <action id="IdeaVim.ReloadVimRc.reload" class="com.maddyhome.idea.vim.ui.ReloadVimRc">
+          <keyboard-shortcut first-keystroke="control shift O" keymap="$default"/>
+          <keyboard-shortcut first-keystroke="control shift O" keymap="Eclipse" remove="true"/>
+          <keyboard-shortcut first-keystroke="control shift O" keymap="NetBeans 6.5" remove="true"/>
+          <keyboard-shortcut first-keystroke="control shift O" keymap="Visual Studio" remove="true"/>
+          <keyboard-shortcut first-keystroke="meta shift O" keymap="Mac OS X" replace-all="true"/>
+          <keyboard-shortcut first-keystroke="meta shift O" keymap="Eclipse (Mac OS X)" replace-all="true" remove="true"/>
+          <keyboard-shortcut first-keystroke="meta shift O" keymap="Xcode" replace-all="true" remove="true"/>
+          <keyboard-shortcut first-keystroke="meta shift I" keymap="Mac OS X 10.5+" replace-all="true"/>
+        </action>
+      </group>
+
+      <action id="VimFindActionIdAction" class="com.maddyhome.idea.vim.listener.FindActionIdAction"/>
+    </actions>
+
+
+
 </idea-plugin>

@@ -30,16 +30,21 @@ class PluginStartup : StartupActivity.DumbAware/*, LightEditCompatible*/ {
   private var firstInitializationOccurred = false
 
   override fun runActivity(project: Project) {
+    return
     if (firstInitializationOccurred && VimPlugin.isEnabled()) {
       // This code should be executed on every project open
       // Project listeners are self-disposable, so there is no need to unregister them on project close
       VimListenerManager.ProjectListeners.add(project)
-    }
+      println("############ VimPlugin.isEnabled()")
+    } else
+      println("############ NOT VimPlugin.isEnabled()")
 
     if (firstInitializationOccurred) return
     firstInitializationOccurred = true
 
+    //FM Debug This is the entry point!!!
+
     // This code should be executed once
-    VimPlugin.getInstance().initialize()
+    // VimPlugin.getInstance().initialize()
   }
 }
